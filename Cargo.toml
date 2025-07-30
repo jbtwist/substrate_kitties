@@ -24,3 +24,6 @@ pallet-balances = { version = "39.0.0" }
 default = [ "std" ]
 std = [ "codec/std", "frame/std", "scale-info/std" ]
 try-runtime = []
+
+[profile.dev]
+incremental = true
