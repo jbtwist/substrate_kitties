@@ -33,13 +33,14 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		TooManyKitties,
+		DuplicateKitty,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		pub fn create_kitty(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let dna = [0u8; 32]; // Placeholder for DNA, to be implemented later
+			let dna = [0u8; 32];
 			Self::mint(who, dna)?;
 			Ok(())
 		}
