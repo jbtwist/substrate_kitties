@@ -21,7 +21,6 @@ pub mod pallet {
 	#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Kitty<T: Config> {
-		// Using 32 bytes to represent a kitty DNA
 		pub dna: [u8; 32],
 		pub owner: T::AccountId,
 	}
@@ -32,16 +31,25 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type Kitties<T: Config> = StorageMap<Key = [u8; 32], Value = Kitty<T>>;
 
+	#[pallet::storage]
+	pub(super) type KittiesOwned<T: Config> = StorageMap<
+		Key = T::AccountId,
+		Value = BoundedVec<[u8; 32], ConstU32<100>>,
+		QueryKind = ValueQuery,
+	>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		Created { owner: T::AccountId },
+		Transferred { from: T::AccountId, to: T::AccountId, kitty_id: [u8; 32] },
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
 		TooManyKitties,
 		DuplicateKitty,
+		TooManyOwned,
 	}
 
 	#[pallet::call]
@@ -49,8 +57,17 @@ pub mod pallet {
 		pub fn create_kitty(origin: OriginFor<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let dna = Self::gen_dna();
-			ensure!(!Kitties::<T>::contains_key(dna), Error::<T>::DuplicateKitty);
 			Self::mint(who, dna)?;
+			Ok(())
+		}
+
+		pub fn transfer(
+			origin: OriginFor<T>,
+			to: T::AccountId,
+			kitty_id: [u8; 32],
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			Self::do_transfer(who, to, kitty_id)?;
 			Ok(())
 		}
 	}
