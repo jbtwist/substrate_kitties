@@ -21,6 +21,7 @@ pub mod pallet {
 	#[derive(Encode, Decode, TypeInfo, MaxEncodedLen)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Kitty<T: Config> {
+		// Using 32 bytes to represent a kitty DNA
 		pub dna: [u8; 32],
 		pub owner: T::AccountId,
 	}
@@ -31,6 +32,7 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type Kitties<T: Config> = StorageMap<Key = [u8; 32], Value = Kitty<T>>;
 
+	/// Track the kitties owned by each account.
 	#[pallet::storage]
 	pub(super) type KittiesOwned<T: Config> = StorageMap<
 		Key = T::AccountId,
@@ -50,6 +52,9 @@ pub mod pallet {
 		TooManyKitties,
 		DuplicateKitty,
 		TooManyOwned,
+		TransferToSelf,
+		NoKitty,
+		NotOwner,
 	}
 
 	#[pallet::call]

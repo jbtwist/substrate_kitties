@@ -3,8 +3,12 @@ use frame::prelude::*;
 use frame::primitives::BlakeTwo256;
 use frame::traits::Hash;
 
+// Learn about internal functions.
 impl<T: Config> Pallet<T> {
+	// Generates and returns DNA
 	pub fn gen_dna() -> [u8; 32] {
+		// Create randomness payload. Multiple kitties can be generated in the same block,
+		// retaining uniqueness.
 		let unique_payload = (
 			frame_system::Pallet::<T>::parent_hash(),
 			frame_system::Pallet::<T>::block_number(),
@@ -17,7 +21,7 @@ impl<T: Config> Pallet<T> {
 
 	pub fn mint(owner: T::AccountId, dna: [u8; 32]) -> DispatchResult {
 		let kitty = Kitty { dna, owner: owner.clone() };
-
+		// Check if the kitty does not already exist in our storage map
 		ensure!(!Kitties::<T>::contains_key(dna), Error::<T>::DuplicateKitty);
 
 		let current_count: u32 = CountForKitties::<T>::get();
@@ -32,6 +36,25 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn do_transfer(from: T::AccountId, to: T::AccountId, kitty_id: [u8; 32]) -> DispatchResult {
+		// Sanity checks
+		ensure!(from != to, Error::<T>::TransferToSelf);
+		let mut kitty = Kitties::<T>::get(kitty_id).ok_or(Error::<T>::NoKitty)?;
+		ensure!(kitty.owner == from, Error::<T>::NotOwner);
+		// Transfer logic
+		kitty.owner = to.clone();
+		let mut to_owned = KittiesOwned::<T>::get(&to);
+		to_owned.try_push(kitty_id).map_err(|_| Error::<T>::TooManyOwned)?;
+		let mut from_owned = KittiesOwned::<T>::get(&from);
+		if let Some(index) = from_owned.iter().position(|&x| x == kitty_id) {
+			from_owned.swap_remove(index);
+		} else {
+			return Err(Error::<T>::NoKitty.into());
+		}
+		// Update storage
+		Kitties::<T>::insert(kitty_id, kitty);
+		KittiesOwned::<T>::insert(&to, to_owned);
+		KittiesOwned::<T>::insert(&from, from_owned);
+		// Communicate event
 		Self::deposit_event(Event::<T>::Transferred { from, to, kitty_id });
 		Ok(())
 	}
